@@ -5,11 +5,11 @@ from mininet.node import CPULimitedHost, Host, Node
 from mininet.node import OVSKernelSwitch
 from mininet.cli import CLI
 from mininet.log import setLogLevel, info
-from mininet.nodelib import NAT
+# from mininet.nodelib import NAT
 
 def myNetwork():
 
-    net = Mininet(topo=None, build=False, ipBase='10.0.0.0/8')
+    net = Mininet(topo=None, build=False)#, ipBase='10.0.0.0/8')
 
     info( '*** Add switches\n')
     s4 = net.addSwitch('s4', cls=OVSKernelSwitch, failMode='standalone')
@@ -23,23 +23,23 @@ def myNetwork():
     info( '*** Configuring NAT\n')
     # Add NAT connectivity
     nat0 = net.addNAT('nat0', connect=True, ip='0.0.0.0', inetIntf='nat0-eth0')
-    
+
     info( '*** Add hosts\n')
     # Be very careful with the addresses used (defaultRoute must not include the mask '/24', but ip needs it)
     h1 = net.addHost('h1', cls=Host, ip='192.168.1.2/24', defaultRoute='via 192.168.1.1')
-    h2 = net.addHost('h2', cls=Host, ip='192.168.1.3/24', defaultRoute='via 192.168.1.1') 
+    h2 = net.addHost('h2', cls=Host, ip='192.168.1.3/24', defaultRoute='via 192.168.1.1')
     h3 = net.addHost('h3', cls=Host, ip='192.168.1.4/24', defaultRoute='via 192.168.1.1')
     h4 = net.addHost('h4', cls=Host, ip='192.168.2.2/24', defaultRoute='via 192.168.2.1')
     h5 = net.addHost('h5', cls=Host, ip='192.168.2.3/24', defaultRoute='via 192.168.2.1')
     h6 = net.addHost('h6', cls=Host, ip='192.168.2.4/24', defaultRoute='via 192.168.2.1')
-    
+
     info( '*** Add links\n')
     # With the addLink command we can create multiple interfaces for a router.
     # Furthermore, it is possible to specify an IP address for each of the interfaces of a router.
     net.addLink(r1, r3, intfName1='r1-eth1', params1={'ip':'10.10.10.1/30'},intfName2='r3-eth1', params2={'ip':'10.10.10.2/30'})
     net.addLink(s2, r1,intfName2='r1-eth0', params2={'ip':'192.168.1.1/24'})
     net.addLink(s4, r3,intfName2='r3-eth0', params2={'ip':'192.168.2.1/24'})
- 
+
     net.addLink(nat0, r1, intfName1='nat0-eth1', params1={'ip':'10.10.10.5/30'}, intfName2='r1-eth2', params2={'ip':'10.10.10.6/30'})
     net.addLink(nat0, r3, intfName1='nat0-eth2', params1={'ip':'10.10.10.9/30'}, intfName2='r3-eth2', params2={'ip':'10.10.10.10/30'})
 
@@ -52,7 +52,7 @@ def myNetwork():
 
     info( '*** Starting network\n')
     net.build()
-    
+
     info( '*** Configuring routers interfaces\n')
     # Notice that commands have to be executed after net.build()
     r1.cmd('sysctl -w net.ipv4.ip_forward=1')
@@ -94,4 +94,3 @@ def myNetwork():
 if __name__ == '__main__':
     setLogLevel( 'info' )
     myNetwork()
-
