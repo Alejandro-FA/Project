@@ -5,81 +5,89 @@ from mininet.node import Host, Node
 from mininet.node import OVSKernelSwitch
 from mininet.cli import CLI
 from mininet.log import setLogLevel, info
-from mininet.nodelib import NAT
-from mininet.util import ipParse, ipStr
 
 def myNetwork():
-    net = Mininet(topo=None, build=False, ipBase='176.16.0.0/16')
+    net = Mininet(ipBase='176.16.0.0/16')
 
-    info( '*** Add switches\n')
+    info( '*** Adding switches\n')
     s0 = net.addSwitch('s0', cls=OVSKernelSwitch, failMode='standalone')
+    s1 = net.addSwitch('s1', cls=OVSKernelSwitch, failMode='standalone')
     s2 = net.addSwitch('s2', cls=OVSKernelSwitch, failMode='standalone')
-    s4 = net.addSwitch('s4', cls=OVSKernelSwitch, failMode='standalone')
 
-    info( '*** Configuring NAT\n')
-    nat0 = net.addNAT()
-    nat0.configDefault() # nat0 will automatically connect to s0
+    info( '*** Adding NAT\n')
+    nat = net.addNAT('nat', connect=None, ip='176.16.0.1/16', flush=True)
+    net.addLink(s0, nat, port2=0)
 
-    info( '*** Add routers\n')
+    info( '*** Adding routers\n')
     # Since we specify the IP adresses for each interface later, we have to use ip=None
-    r1 = net.addHost('r1', cls=Node, ip=None, defaultRoute='dev r1-eth2 via '+ nat0.IP())
-    r3 = net.addHost('r3', cls=Node, ip=None, defaultRoute='dev r3-eth2 via '+ nat0.IP())
+    r1 = net.addHost('r1', cls=Node, ip=None)
+    net.addLink(s0, r1, params2={'ip':'176.16.0.2/16'}, port2=0)
+    net.addLink(s1, r1, params2={'ip':'192.168.1.1/24'}, port2=1)
 
-    info( '*** Add hosts\n')
-    h1 = net.addHost('h1', cls=Host, ip='192.168.1.2/24', defaultRoute='via 192.168.1.1')
-    h2 = net.addHost('h2', cls=Host, ip='192.168.1.3/24', defaultRoute='via 192.168.1.1')
-    h3 = net.addHost('h3', cls=Host, ip='192.168.1.4/24', defaultRoute='via 192.168.1.1')
-    h4 = net.addHost('h4', cls=Host, ip='192.168.2.2/24', defaultRoute='via 192.168.2.1')
-    h5 = net.addHost('h5', cls=Host, ip='192.168.2.3/24', defaultRoute='via 192.168.2.1')
-    h6 = net.addHost('h6', cls=Host, ip='192.168.2.4/24', defaultRoute='via 192.168.2.1')
+    r2 = net.addHost('r2', cls=Node, ip=None)
+    net.addLink(s0, r2, params2={'ip':'176.16.0.3/16'}, port2=0)
+    net.addLink(s2, r2, params2={'ip':'192.168.2.1/24'}, port2=2)
 
-    info( '*** Add links\n')
-    # nat-router subnet
-    ip = ipParse(nat0.IP())
-    net.addLink(s0, r1, intfName2='r1-eth2', params2={'ip':ipStr(ip+1)+'/'+str(net.prefixLen)})
-    net.addLink(s0, r3, intfName2='r3-eth2', params2={'ip':ipStr(ip+2)+'/'+str(net.prefixLen)})
+    net.addLink(r1, r2, params1={'ip':'10.10.10.1/30'}, port1=2,
+                        params2={'ip':'10.10.10.2/30'}, port2=1)
 
-    # router-router subnet
-    net.addLink(r1, r3, intfName1='r1-eth1', params1={'ip':'10.10.10.1/30'},intfName2='r3-eth1', params2={'ip':'10.10.10.2/30'})
-
-    # host-router subnet
-    net.addLink(s2, r1, intfName2='r1-eth0', params2={'ip':'192.168.1.1/24'})
-    net.addLink(s4, r3, intfName2='r3-eth0', params2={'ip':'192.168.2.1/24'})
-    net.addLink(h1, s2)
-    net.addLink(h2, s2)
-    net.addLink(h3, s2)
-    net.addLink(h4, s4)
-    net.addLink(h5, s4)
-    net.addLink(h6, s4)
-
-    info( '*** Configuring static routes\n')
-    r1.cmd('ip route add 192.168.2.0/24 via 10.10.10.2 dev r1-eth1')
-    r3.cmd('ip route add 192.168.1.0/24 via 10.10.10.1 dev r3-eth1')
-    nat0.cmd('ip route add 192.168.1.0/24 via '+r1.IP(intf='r1-eth2')+' dev '+nat0.defaultIntf().name)
-    nat0.cmd('ip route add 192.168.2.0/24 via '+r3.IP(intf='r3-eth2')+' dev '+nat0.defaultIntf().name)
+    info( '*** Adding hosts\n')
+    h1 = net.addHost('h1', cls=Host, ip='192.168.1.2/24')
+    h2 = net.addHost('h2', cls=Host, ip='192.168.1.3/24')
+    h3 = net.addHost('h3', cls=Host, ip='192.168.1.4/24')
+    h4 = net.addHost('h4', cls=Host, ip='192.168.2.2/24')
+    h5 = net.addHost('h5', cls=Host, ip='192.168.2.3/24')
+    h6 = net.addHost('h6', cls=Host, ip='192.168.2.4/24')
+    net.addLink(h1, s1, port1=0)
+    net.addLink(h2, s1, port1=0)
+    net.addLink(h3, s1, port1=0)
+    net.addLink(h4, s2, port1=0)
+    net.addLink(h5, s2, port1=0)
+    net.addLink(h6, s2, port1=0)
 
     info( '*** Starting network\n')
-    net.build()
+    # net.build()
+    net.start()
 
-    info( '*** Configuring NAT IP tables\n')
+    info('*** Configuring default routes\n')
+    r1.setDefaultRoute('dev ' + r1.intfs[0].name + ' via ' + nat.IP())
+    r2.setDefaultRoute('dev ' + r2.intfs[0].name + ' via ' + nat.IP())
+
+    h1.setDefaultRoute('dev ' + h1.intfs[0].name + ' via ' + r1.intfs[1].IP())
+    h2.setDefaultRoute('dev ' + h2.intfs[0].name + ' via ' + r1.intfs[1].IP())
+    h3.setDefaultRoute('dev ' + h3.intfs[0].name + ' via ' + r1.intfs[1].IP())
+    h4.setDefaultRoute('dev ' + h4.intfs[0].name + ' via ' + r2.intfs[2].IP())
+    h5.setDefaultRoute('dev ' + h5.intfs[0].name + ' via ' + r2.intfs[2].IP())
+    h6.setDefaultRoute('dev ' + h6.intfs[0].name + ' via ' + r2.intfs[2].IP())
+
+    info( '*** Configuring static routes\n')
+    # 192.168.1.0/24
+    r2.cmd('ip route add ' + '192.168.1.0/24' + ' via ' + r1.intfs[2].IP() + ' dev ' + r2.intfs[1].name)
+    nat.cmd('ip route add ' + '192.168.1.0/24' + ' via ' + r1.intfs[0].IP() + ' dev ' + nat.intfs[0].name)
+    # 192.168.2.0/24
+    r1.cmd('ip route add ' + '192.168.2.0/24' + ' via ' + r2.intfs[1].IP() + ' dev ' + r1.intfs[2].name)
+    nat.cmd('ip route add ' + '192.168.2.0/24' + ' via ' + r2.intfs[0].IP() + ' dev ' + nat.intfs[0].name)
+
+    info( '*** Configuring NAT rules\n')
     for subnet in ['192.168.1.0/24', '192.168.2.0/24']:
-        nat0.cmd( 'iptables -I FORWARD','-i', nat0.defaultIntf().name, '-d', subnet, '-j DROP' )
-        nat0.cmd( 'iptables -A FORWARD','-i', nat0.defaultIntf().name, '-s', subnet, '-j ACCEPT' )
-        nat0.cmd( 'iptables -A FORWARD','-o', nat0.defaultIntf().name, '-d', subnet, '-j ACCEPT' )
-        nat0.cmd( 'iptables -t nat -A POSTROUTING','-s', subnet, "'!'", '-d', subnet,'-j MASQUERADE' )
-
-    info( '*** Starting switches\n')
-    s0.start([])
-    s2.start([])
-    s4.start([])
+        nat.cmd( 'iptables -I FORWARD','-i', nat.intfs[0], '-d', subnet, '-j DROP' )
+        nat.cmd( 'iptables -A FORWARD','-i', nat.intfs[0], '-s', subnet, '-j ACCEPT' )
+        nat.cmd( 'iptables -A FORWARD','-o', nat.intfs[0], '-d', subnet, '-j ACCEPT' )
+        nat.cmd( 'iptables -t nat -A POSTROUTING','-s', subnet, "'!'", '-d', subnet,'-j MASQUERADE' )
 
     #info( "*** Testing network connectivity\n" )
     # net.pingAll()
 
-    info( '*** Post configure switches and hosts\n')
+    info( '*** Network is fully configured. Starting CLI\n')
     CLI(net)
+    info( '*** Removing NAT rules\n')
+    for subnet in ['192.168.1.0/24', '192.168.2.0/24']:
+        nat.cmd( 'iptables -D FORWARD','-i', nat.intfs[0], '-d', subnet, '-j DROP' )
+        nat.cmd( 'iptables -D FORWARD','-i', nat.intfs[0], '-s', subnet, '-j ACCEPT' )
+        nat.cmd( 'iptables -D FORWARD','-o', nat.intfs[0], '-d', subnet, '-j ACCEPT' )
+        nat.cmd( 'iptables -t nat -D POSTROUTING','-s', subnet, '\'!\'', '-d', subnet,'-j MASQUERADE' )
     net.stop()
 
 if __name__ == '__main__':
-    setLogLevel( 'info' )
+    setLogLevel( 'debug' )
     myNetwork()
