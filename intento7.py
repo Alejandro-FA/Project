@@ -62,7 +62,7 @@ def myNetwork():
     net.build()
 
     info( '*** Configuring NAT IP tables\n')
-    for subnet in ['192.168.1.0/24', '192.168.2.0/24']:#, net.ipBase]:
+    for subnet in ['192.168.1.0/24', '192.168.2.0/24']:
         nat0.cmd( 'iptables -I FORWARD','-i', nat0.defaultIntf().name, '-d', subnet, '-j DROP' )
         nat0.cmd( 'iptables -A FORWARD','-i', nat0.defaultIntf().name, '-s', subnet, '-j ACCEPT' )
         nat0.cmd( 'iptables -A FORWARD','-o', nat0.defaultIntf().name, '-d', subnet, '-j ACCEPT' )
