@@ -86,7 +86,7 @@ def NATNetwork(nrouters=2, nhosts=3):
     # info( "*** Testing network connectivity\n" )
     # net.pingAll()
 
-    info( '*** Network is fully configured. Starting CLI\n')
+    info( '*** Network is fully configured\n')
     CLI(net)
     info( '*** Removing NAT rules\n')
     for subnet in netH.subnets:
@@ -98,4 +98,4 @@ def NATNetwork(nrouters=2, nhosts=3):
 
 if __name__ == '__main__':
     setLogLevel( 'info' )
-    NATNetwork(nrouters=5, nhosts=3)
+    NATNetwork(nrouters=2, nhosts=3)
