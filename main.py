@@ -8,7 +8,7 @@ from mininet.log import setLogLevel, info
 from mininet.util import irange
 from util import Network
 
-def NATNetwork(nrouters=2, nhosts=3):
+def NATNetwork(nrouters=2, nhosts=3, server=False):
     """nrouters: number of local subnets to build (each one has 1 router)
        nhosts: number of hosts per local subnet"""
     netN = Network('176.16.0.0/16')
@@ -83,6 +83,18 @@ def NATNetwork(nrouters=2, nhosts=3):
         nat.cmd( 'iptables -A FORWARD','-o', nat.intfs[0], '-d', subnet.ip, '-j ACCEPT' )
         nat.cmd( 'iptables -t nat -A POSTROUTING','-s', subnet.ip, "'!'", '-d', subnet.ip,'-j MASQUERADE' )
 
+    if server is True:
+        i = 1
+        info( '*** Executing Flask server on host h%d (in the background).\n'
+              '    Server output will be redirected to Flask.log\n' % i)
+        net.get('h%d'%i).cmd('python Flask.py --ip', net.get('h%d'%i).IP(),
+                             '> Flask.log 2>&1 &')
+
+        info( '*** Configuring NAT to forward incoming tcp packets with\n'
+              '    destination port 5200 to %s:5200\n' % net.get('h%d'%i).IP())
+        nat.cmd('iptables -t nat -A PREROUTING', '-i', 'enp0s3', '-p tcp',
+                '--dport 5200 -j DNAT', '--to %s:5200' % net.get('h%d'%i).IP())
+
     # info( "*** Testing network connectivity\n" )
     # net.pingAll()
 
@@ -93,9 +105,28 @@ def NATNetwork(nrouters=2, nhosts=3):
         nat.cmd( 'iptables -D FORWARD','-i', nat.intfs[0], '-d', subnet.ip, '-j DROP' )
         nat.cmd( 'iptables -D FORWARD','-i', nat.intfs[0], '-s', subnet.ip, '-j ACCEPT' )
         nat.cmd( 'iptables -D FORWARD','-o', nat.intfs[0], '-d', subnet.ip, '-j ACCEPT' )
-        nat.cmd( 'iptables -t nat -D POSTROUTING','-s', subnet.ip, '\'!\'', '-d', subnet.ip,'-j MASQUERADE' )
+        nat.cmd( 'iptables -t nat -D POSTROUTING','-s', subnet.ip, "'!'", '-d', subnet.ip,'-j MASQUERADE' )
+    if server is True:
+        nat.cmd('iptables -t nat -D PREROUTING', '-i', 'enp0s3', '-p tcp',
+                '--dport 5200 -j DNAT', '--to %s:5200' % net.get('h%d'%i).IP())
     net.stop()
 
 if __name__ == '__main__':
+    from argparse import ArgumentParser
+    parser = ArgumentParser(description='Create Mininet Network with NAT.')
+    server_flag = parser.add_mutually_exclusive_group()
+
+    parser.add_argument("-N","--nrouters",dest="nrouters", default=2, type=int,
+                        help="Number of routers to add to the topology. Default: 2")
+    parser.add_argument("-n","--nhosts",dest="nhosts", default=3, type=int,
+                        help="Number of hosts to add to each router. Default: 3")
+    server_flag.add_argument("-s","--server",dest="flag", action='store_true',
+                        help="Execute a flask server in on of the hosts")
+    server_flag.add_argument("-c","--client",dest="flag", action='store_false',
+                        help="Don't execute a flask server in on of the hosts")
+
+    parser.set_defaults(flag=False)
+    args = parser.parse_args()
+
     setLogLevel( 'info' )
-    NATNetwork(nrouters=2, nhosts=3)
+    NATNetwork(nrouters=args.nrouters, nhosts=args.nhosts, server=args.flag)
