@@ -11,7 +11,7 @@ from util import Network
 def NATNetwork(nrouters=2, nhosts=3, server=False):
     """nrouters: number of local subnets to build (each one has 1 router)
        nhosts: number of hosts per local subnet"""
-    netN = Network('176.16.0.0/16')
+    netN = Network('172.16.0.0/16')
     netR = Network('10.10.10.0/24')
     netH = Network('192.168.0.0/16', nextSubnet='192.168.1.0')
 
