@@ -86,9 +86,9 @@ def NATNetwork(nrouters=2, nhosts=3, server=False):
     if server is True:
         i = 1
         info( '*** Executing Flask server on host h%d (in the background).\n'
-              '    Server output will be redirected to Flask.log\n' % i)
-        net.get('h%d'%i).cmd('python Flask.py --ip', net.get('h%d'%i).IP(),
-                             '> Flask.log 2>&1 &')
+              '    Server output will be redirected to Flask1.log\n' % i)
+        net.get('h%d'%i).cmd('python Flask1.py --ip', net.get('h%d'%i).IP(),
+                             '> Flask1.log 2>&1 &')
 
         info( '*** Configuring NAT to forward incoming tcp packets with\n'
               '    destination port 5200 to %s:5200\n' % net.get('h%d'%i).IP())
